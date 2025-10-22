@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能种植可视化工具 - Smart Planting Visualization</title>
+
+    <style>
+        /* ==================== CSS变量定义 ==================== */
+        :root {
+            /* 主题色 */
+            --primary-green: #10B981;
+            --primary-blue: #3B82F6;
+            --primary-cyan: #06B6D4;
+
+            /* 功能色 */
+            --light-indicator: #FBBF24;
+            --sound-indicator: #8B5CF6;
+
+            /* 背景色 */
+            --bg-primary: #F9FAFB;
+            --bg-secondary: #FFFFFF;
+            --bg-card: rgba(255, 255, 255, 0.8);
+
+            /* 文本色 */
+            --text-primary: #111827;
+            --text-secondary: #6B7280;
+            --text-tertiary: #9CA3AF;
+
+            /* 边框与阴影 */
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+            /* 玻璃态效果 */
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ==================== 全局样式 ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                         "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* ==================== 布局容器 ==================== */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1.3fr 1fr;
+            gap: 24px;
+            position: relative;
+        }
+
+        /* ==================== 卡片组件 ==================== */
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-lg);
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ==================== 左侧区域：控制面板 ==================== */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .control-value {
+            font-family: "JetBrains Mono", "Consolas", monospace;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        /* 滑块样式 */
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(0, 0, 0, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .slider::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.6);
+        }
+
+        /* 开关按钮 */
+        .switch-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 56px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.2);
+            transition: 0.3s;
+            border-radius: 28px;
+        }
+
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input:checked + .switch-slider {
+            background: linear-gradient(135deg, var(--primary-green), var(--primary-cyan));
+        }
+
+        input:checked + .switch-slider:before {
+            transform: translateX(28px);
+        }
+
+        /* 按钮样式 */
+        .btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
+            color: white;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.5);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ==================== 中央区域：植物展示 ==================== */
+        .plant-area {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+        }
+
+        .plant-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        /* 植物SVG */
+        .plant-svg {
+            width: 200px;
+            height: 250px;
+            filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3));
+        }
+
+        /* 花盆 */
+        .pot {
+            width: 180px;
+            height: 100px;
+            background: linear-gradient(135deg, #8B4513, #A0522D);
+            border-radius: 0 0 20px 20px;
+            position: relative;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .pot::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            right: 10px;
+            height: 20px;
+            background: linear-gradient(135deg, #654321, #8B4513);
+            border-radius: 50%;
+        }
+
+        .soil {
+            position: absolute;
+            top: 0;
+            left: 15px;
+            right: 15px;
+            height: 30px;
+            background: #3E2723;
+            border-radius: 50%;
+        }
+
+        /* 设备容器 */
+        .device-container {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .device {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-md);
+            min-width: 140px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .device:hover {
+            transform: scale(1.05);
+        }
+
+        .device-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+        }
+
+        .device-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* 加湿器Canvas */
+        #humidifierCanvas {
+            position: absolute;
+            top: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #humidifierCanvas.active {
+            opacity: 1;
+        }
+
+        /* 水龙头效果 */
+        .water-drop {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: var(--primary-cyan);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--primary-cyan);
+            animation: waterDrop 1s ease-in infinite;
+        }
+
+        @keyframes waterDrop {
+            0% {
+                top: 20px;
+                opacity: 1;
+            }
+            100% {
+                top: 100px;
+                opacity: 0;
+            }
+        }
+
+        /* ==================== 右侧区域：数据显示 ==================== */
+        .display-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sensor-display {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-md);
+        }
+
+        .sensor-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .sensor-icon {
+            font-size: 24px;
+        }
+
+        .sensor-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .sensor-value {
+            font-family: "JetBrains Mono", "Consolas", monospace;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 8px 0;
+        }
+
+        /* 进度环 */
+        .progress-ring {
+            width: 100%;
+            height: 100px;
+            position: relative;
+            margin: 16px 0;
+        }
+
+        .progress-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        /* 状态指示器 */
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .status-indicator.green {
+            background: var(--primary-green);
+            box-shadow: 0 0 8px var(--primary-green);
+        }
+
+        .status-indicator.blue {
+            background: var(--primary-blue);
+            box-shadow: 0 0 8px var(--primary-blue);
+        }
+
+        .status-indicator.cyan {
+            background: var(--primary-cyan);
+            box-shadow: 0 0 8px var(--primary-cyan);
+        }
+
+        /* ==================== SVG连接线 ==================== */
+        .connection-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .connection-line {
+            stroke: rgba(255, 255, 255, 0.3);
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 10 5;
+            animation: dashFlow 2s linear infinite;
+        }
+
+        .connection-line.active {
+            stroke: var(--primary-cyan);
+            stroke-width: 3;
+            filter: drop-shadow(0 0 8px var(--primary-cyan));
+        }
+
+        @keyframes dashFlow {
+            to {
+                stroke-dashoffset: -15;
+            }
+        }
+
+        /* ==================== 操作说明弹窗 ==================== */
+        .help-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-cyan));
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .help-button:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 20px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+
+        .modal-body h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .modal-body ul {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .modal-body li {
+            margin-bottom: 6px;
+        }
+
+        .close-modal {
+            float: right;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: var(--text-primary);
+        }
+
+        /* ==================== 响应式设计 ==================== */
+        @media (max-width: 1023px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .control-panel, .display-panel {
+                max-width: 600px;
+                margin: 0 auto;
+                width: 100%;
+            }
+
+            .plant-area {
+                min-height: 400px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .card-title {
+                font-size: 18px;
+            }
+
+            .sensor-value {
+                font-size: 24px;
+            }
+
+            .device-container {
+                gap: 12px;
+            }
+
+            .device {
+                min-width: 100px;
+                padding: 16px;
+            }
+
+            .device-icon {
+                font-size: 36px;
+            }
+
+            .help-button {
+                width: 48px;
+                height: 48px;
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+
+        /* ==================== 动画性能优化 ==================== */
+        .card, .btn, .device, .switch-slider, .slider::-webkit-slider-thumb {
+            will-change: transform;
+        }
+
+        /* ==================== 打印样式 ==================== */
+        @media print {
+            .help-button, .modal {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 操作说明弹窗 -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeHelp()">&times;</span>
+            <div class="modal-header">📚 操作说明</div>
+            <div class="modal-body">
+                <h3>🎯 功能介绍</h3>
+                <p>智能种植可视化工具模拟了一个完整的IoT智能种植系统，包含传感器、执行器和数据显示模块。</p>
+
+                <h3>🎮 控制面板</h3>
+                <ul>
+                    <li><strong>环境亮度</strong>：调节光线强度（0-100%）</li>
+                    <li><strong>声音响度</strong>：调节环境噪音（0-100dB）</li>
+                    <li><strong>加湿器开关</strong>：控制空气湿度增加</li>
+                    <li><strong>水龙头开关</strong>：控制土壤湿度增加</li>
+                </ul>
+
+                <h3>📊 系统逻辑</h3>
+                <ul>
+                    <li>加湿器开启时：空气湿度每秒增加 2%</li>
+                    <li>加湿器关闭时：空气湿度每秒减少 1%</li>
+                    <li>水龙头开启时：土壤湿度每秒增加 1.5%</li>
+                    <li>水龙头关闭时：土壤湿度每秒减少 0.8%</li>
+                </ul>
+
+                <h3>💡 操作建议</h3>
+                <ul>
+                    <li>点击"开始模拟"启动系统</li>
+                    <li>调整滑块和开关，观察数据变化</li>
+                    <li>观察设备动画效果（雾气、水流）</li>
+                    <li>点击"重置系统"恢复初始状态</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 帮助按钮 -->
+    <button class="help-button" onclick="openHelp()">?</button>
+
+    <!-- 主应用容器 -->
+    <div class="app-container">
+        <!-- 左侧：控制面板 -->
+        <div class="control-panel">
+            <div class="card">
+                <h2 class="card-title">🎛️ 控制面板</h2>
+
+                <!-- 环境亮度控制 -->
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>☀️ 环境亮度</span>
+                        <span class="control-value"><span id="brightnessValue">50</span>%</span>
+                    </div>
+                    <input type="range" id="brightnessSlider" class="slider" min="0" max="100" value="50">
+                </div>
+
+                <!-- 声音响度控制 -->
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>🔊 声音响度</span>
+                        <span class="control-value"><span id="soundValue">30</span>dB</span>
+                    </div>
+                    <input type="range" id="soundSlider" class="slider" min="0" max="100" value="30">
+                </div>
+
+                <!-- 加湿器开关 -->
+                <div class="switch-group">
+                    <span>💧 加湿器</span>
+                    <label class="switch">
+                        <input type="checkbox" id="humidifierSwitch">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+
+                <!-- 水龙头开关 -->
+                <div class="switch-group">
+                    <span>🚰 水龙头</span>
+                    <label class="switch">
+                        <input type="checkbox" id="waterSwitch">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+
+                <!-- 控制按钮 -->
+                <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
+                    <button id="startBtn" class="btn btn-primary">▶️ 开始模拟</button>
+                    <button id="resetBtn" class="btn btn-secondary">🔄 重置系统</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中央：植物展示区 -->
+        <div class="plant-area card">
+            <h2 class="card-title">🌱 智能种植系统</h2>
+
+            <div class="plant-container">
+                <!-- 植物SVG -->
+                <svg class="plant-svg" viewBox="0 0 200 250" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 茎干 -->
+                    <rect x="95" y="80" width="10" height="120" fill="#2D5016" rx="5"/>
+
+                    <!-- 叶子 -->
+                    <ellipse cx="70" cy="100" rx="25" ry="15" fill="#10B981" transform="rotate(-30 70 100)"/>
+                    <ellipse cx="130" cy="100" rx="25" ry="15" fill="#10B981" transform="rotate(30 130 100)"/>
+                    <ellipse cx="60" cy="140" rx="28" ry="18" fill="#059669" transform="rotate(-40 60 140)"/>
+                    <ellipse cx="140" cy="140" rx="28" ry="18" fill="#059669" transform="rotate(40 140 140)"/>
+                    <ellipse cx="75" cy="180" rx="22" ry="14" fill="#10B981" transform="rotate(-25 75 180)"/>
+                    <ellipse cx="125" cy="180" rx="22" ry="14" fill="#10B981" transform="rotate(25 125 180)"/>
+
+                    <!-- 花朵 -->
+                    <circle cx="100" cy="70" r="20" fill="#FBBF24"/>
+                    <circle cx="85" cy="65" r="10" fill="#F59E0B"/>
+                    <circle cx="115" cy="65" r="10" fill="#F59E0B"/>
+                    <circle cx="90" cy="80" r="10" fill="#F59E0B"/>
+                    <circle cx="110" cy="80" r="10" fill="#F59E0B"/>
+                </svg>
+
+                <!-- 花盆 -->
+                <div class="pot">
+                    <div class="soil"></div>
+                </div>
+            </div>
+
+            <!-- 设备展示 -->
+            <div class="device-container">
+                <div class="device" id="humidifierDevice">
+                    <canvas id="humidifierCanvas" width="120" height="80"></canvas>
+                    <div class="device-icon">💨</div>
+                    <div class="device-name">加湿器</div>
+                </div>
+
+                <div class="device" id="waterDevice">
+                    <div class="device-icon">🚰</div>
+                    <div class="device-name">水龙头</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：数据显示 -->
+        <div class="display-panel">
+            <div class="card">
+                <h2 class="card-title">📊 数据显示屏</h2>
+
+                <!-- 空气湿度 -->
+                <div class="sensor-display">
+                    <div class="sensor-header">
+                        <span class="sensor-icon">💧</span>
+                        <span class="sensor-title">空气湿度</span>
+                    </div>
+                    <div class="sensor-value">
+                        <span class="status-indicator cyan"></span>
+                        <span id="airHumidityValue">50</span>%
+                    </div>
+                    <div class="progress-ring">
+                        <svg width="100%" height="100">
+                            <circle cx="50%" cy="50" r="40" stroke="rgba(6, 182, 212, 0.2)" stroke-width="8" fill="none"/>
+                            <circle id="airHumidityCircle" cx="50%" cy="50" r="40" stroke="#06B6D4" stroke-width="8"
+                                    fill="none" class="progress-ring-circle"
+                                    stroke-dasharray="251.2" stroke-dashoffset="125.6"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- 土壤湿度 -->
+                <div class="sensor-display">
+                    <div class="sensor-header">
+                        <span class="sensor-icon">🌍</span>
+                        <span class="sensor-title">土壤湿度</span>
+                    </div>
+                    <div class="sensor-value">
+                        <span class="status-indicator green"></span>
+                        <span id="soilMoistureValue">50</span>%
+                    </div>
+                    <div class="progress-ring">
+                        <svg width="100%" height="100">
+                            <circle cx="50%" cy="50" r="40" stroke="rgba(16, 185, 129, 0.2)" stroke-width="8" fill="none"/>
+                            <circle id="soilMoistureCircle" cx="50%" cy="50" r="40" stroke="#10B981" stroke-width="8"
+                                    fill="none" class="progress-ring-circle"
+                                    stroke-dasharray="251.2" stroke-dashoffset="125.6"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==================== 全局常量配置 ==================== */
+        const CONFIG = {
+            UPDATE_INTERVAL: 1000, // 更新间隔（毫秒）
+            AIR_HUMIDITY_INCREASE: 2, // 加湿器开启时空气湿度增加速率（%/秒）
+            AIR_HUMIDITY_DECREASE: 1, // 加湿器关闭时空气湿度减少速率（%/秒）
+            SOIL_MOISTURE_INCREASE: 1.5, // 水龙头开启时土壤湿度增加速率（%/秒）
+            SOIL_MOISTURE_DECREASE: 0.8, // 水龙头关闭时土壤湿度减少速率（%/秒）
+            MAX_PARTICLES: 50, // 最大粒子数量
+            PARTICLE_SPAWN_RATE: 100 // 粒子生成间隔（毫秒）
+        };
+
+        /* ==================== 状态管理器 ==================== */
+        class StateManager {
+            constructor() {
+                this.brightness = 50;
+                this.soundLevel = 30;
+                this.airHumidity = 50;
+                this.soilMoisture = 50;
+                this.humidifierOn = false;
+                this.waterOn = false;
+                this.isRunning = false;
+            }
+
+            reset() {
+                this.brightness = 50;
+                this.soundLevel = 30;
+                this.airHumidity = 50;
+                this.soilMoisture = 50;
+                this.humidifierOn = false;
+                this.waterOn = false;
+                this.isRunning = false;
+            }
+
+            updateAirHumidity() {
+                if (this.humidifierOn) {
+                    this.airHumidity = Math.min(100, this.airHumidity + CONFIG.AIR_HUMIDITY_INCREASE);
+                } else {
+                    this.airHumidity = Math.max(30, this.airHumidity - CONFIG.AIR_HUMIDITY_DECREASE);
+                }
+            }
+
+            updateSoilMoisture() {
+                if (this.waterOn) {
+                    this.soilMoisture = Math.min(100, this.soilMoisture + CONFIG.SOIL_MOISTURE_INCREASE);
+                } else {
+                    this.soilMoisture = Math.max(30, this.soilMoisture - CONFIG.SOIL_MOISTURE_DECREASE);
+                }
+            }
+        }
+
+        /* ==================== 传感器模拟器 ==================== */
+        class SensorSimulator {
+            constructor(stateManager) {
+                this.state = stateManager;
+                this.updateTimer = null;
+            }
+
+            start() {
+                this.updateTimer = setInterval(() => {
+                    if (this.state.isRunning) {
+                        this.state.updateAirHumidity();
+                        this.state.updateSoilMoisture();
+                        this.updateUI();
+                    }
+                }, CONFIG.UPDATE_INTERVAL);
+            }
+
+            stop() {
+                if (this.updateTimer) {
+                    clearInterval(this.updateTimer);
+                    this.updateTimer = null;
+                }
+            }
+
+            updateUI() {
+                // 更新空气湿度显示
+                animateValue('airHumidityValue', parseFloat(this.state.airHumidity.toFixed(1)));
+                updateProgressRing('airHumidityCircle', this.state.airHumidity);
+
+                // 更新土壤湿度显示
+                animateValue('soilMoistureValue', parseFloat(this.state.soilMoisture.toFixed(1)));
+                updateProgressRing('soilMoistureCircle', this.state.soilMoisture);
+            }
+        }
+
+        /* ==================== 粒子系统（加湿器雾气） ==================== */
+        class ParticleSystem {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.isActive = false;
+                this.spawnTimer = null;
+                this.animationId = null;
+            }
+
+            start() {
+                this.isActive = true;
+                this.canvas.classList.add('active');
+
+                // 粒子生成定时器
+                this.spawnTimer = setInterval(() => {
+                    if (this.particles.length < CONFIG.MAX_PARTICLES) {
+                        this.particles.push(this.createParticle());
+                    }
+                }, CONFIG.PARTICLE_SPAWN_RATE);
+
+                // 开始动画循环
+                this.animate();
+            }
+
+            stop() {
+                this.isActive = false;
+                this.canvas.classList.remove('active');
+
+                if (this.spawnTimer) {
+                    clearInterval(this.spawnTimer);
+                    this.spawnTimer = null;
+                }
+
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+
+                this.particles = [];
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            createParticle() {
+                return {
+                    x: Math.random() * this.canvas.width,
+                    y: this.canvas.height,
+                    radius: Math.random() * 3 + 2,
+                    speedY: Math.random() * 2 + 1,
+                    speedX: (Math.random() - 0.5) * 1,
+                    opacity: 1,
+                    life: 0
+                };
+            }
+
+            animate() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+
+                    // 更新粒子位置
+                    p.y -= p.speedY;
+                    p.x += p.speedX;
+                    p.life += 0.01;
+                    p.opacity = Math.max(0, 1 - p.life);
+
+                    // 绘制粒子
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `rgba(6, 182, 212, ${p.opacity})`;
+                    this.ctx.fill();
+
+                    // 移除消失的粒子
+                    if (p.opacity <= 0 || p.y < 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+
+                if (this.isActive) {
+                    this.animationId = requestAnimationFrame(() => this.animate());
+                }
+            }
+        }
+
+        /* ==================== 水流动画系统 ==================== */
+        class WaterAnimation {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.isActive = false;
+                this.dropTimer = null;
+            }
+
+            start() {
+                this.isActive = true;
+
+                this.dropTimer = setInterval(() => {
+                    this.createWaterDrop();
+                }, 200);
+            }
+
+            stop() {
+                this.isActive = false;
+
+                if (this.dropTimer) {
+                    clearInterval(this.dropTimer);
+                    this.dropTimer = null;
+                }
+
+                // 清除所有水滴
+                const drops = this.container.querySelectorAll('.water-drop');
+                drops.forEach(drop => drop.remove());
+            }
+
+            createWaterDrop() {
+                const drop = document.createElement('div');
+                drop.className = 'water-drop';
+                drop.style.left = `${Math.random() * 60 + 20}%`;
+                drop.style.animationDuration = `${Math.random() * 0.3 + 0.8}s`;
+
+                this.container.appendChild(drop);
+
+                // 动画结束后移除
+                setTimeout(() => {
+                    drop.remove();
+                }, 1000);
+            }
+        }
+
+        /* ==================== UI控制器 ==================== */
+        class UIController {
+            constructor(stateManager, sensorSimulator, particleSystem, waterAnimation) {
+                this.state = stateManager;
+                this.simulator = sensorSimulator;
+                this.particleSystem = particleSystem;
+                this.waterAnimation = waterAnimation;
+
+                this.initEventListeners();
+            }
+
+            initEventListeners() {
+                // 亮度滑块
+                document.getElementById('brightnessSlider').addEventListener('input', (e) => {
+                    this.state.brightness = parseFloat(e.target.value);
+                    document.getElementById('brightnessValue').textContent = this.state.brightness;
+                });
+
+                // 声音滑块
+                document.getElementById('soundSlider').addEventListener('input', (e) => {
+                    this.state.soundLevel = parseFloat(e.target.value);
+                    document.getElementById('soundValue').textContent = this.state.soundLevel;
+                });
+
+                // 加湿器开关
+                document.getElementById('humidifierSwitch').addEventListener('change', (e) => {
+                    this.state.humidifierOn = e.target.checked;
+
+                    if (this.state.isRunning) {
+                        if (this.state.humidifierOn) {
+                            this.particleSystem.start();
+                        } else {
+                            this.particleSystem.stop();
+                        }
+                    }
+                });
+
+                // 水龙头开关
+                document.getElementById('waterSwitch').addEventListener('change', (e) => {
+                    this.state.waterOn = e.target.checked;
+
+                    if (this.state.isRunning) {
+                        if (this.state.waterOn) {
+                            this.waterAnimation.start();
+                        } else {
+                            this.waterAnimation.stop();
+                        }
+                    }
+                });
+
+                // 开始按钮
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.toggleSimulation();
+                });
+
+                // 重置按钮
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.resetSystem();
+                });
+            }
+
+            toggleSimulation() {
+                const startBtn = document.getElementById('startBtn');
+
+                if (!this.state.isRunning) {
+                    this.state.isRunning = true;
+                    startBtn.innerHTML = '⏸️ 暂停模拟';
+                    startBtn.classList.remove('btn-primary');
+                    startBtn.classList.add('btn-secondary');
+
+                    this.simulator.start();
+
+                    if (this.state.humidifierOn) {
+                        this.particleSystem.start();
+                    }
+
+                    if (this.state.waterOn) {
+                        this.waterAnimation.start();
+                    }
+                } else {
+                    this.state.isRunning = false;
+                    startBtn.innerHTML = '▶️ 开始模拟';
+                    startBtn.classList.remove('btn-secondary');
+                    startBtn.classList.add('btn-primary');
+
+                    this.particleSystem.stop();
+                    this.waterAnimation.stop();
+                }
+            }
+
+            resetSystem() {
+                // 停止所有动画
+                this.state.isRunning = false;
+                this.simulator.stop();
+                this.particleSystem.stop();
+                this.waterAnimation.stop();
+
+                // 重置状态
+                this.state.reset();
+
+                // 重置UI
+                document.getElementById('brightnessSlider').value = 50;
+                document.getElementById('brightnessValue').textContent = 50;
+                document.getElementById('soundSlider').value = 30;
+                document.getElementById('soundValue').textContent = 30;
+                document.getElementById('humidifierSwitch').checked = false;
+                document.getElementById('waterSwitch').checked = false;
+
+                document.getElementById('airHumidityValue').textContent = 50;
+                document.getElementById('soilMoistureValue').textContent = 50;
+                updateProgressRing('airHumidityCircle', 50);
+                updateProgressRing('soilMoistureCircle', 50);
+
+                const startBtn = document.getElementById('startBtn');
+                startBtn.innerHTML = '▶️ 开始模拟';
+                startBtn.classList.remove('btn-secondary');
+                startBtn.classList.add('btn-primary');
+
+                // 重启传感器模拟器（但不启动运行）
+                this.simulator.start();
+            }
+        }
+
+        /* ==================== 工具函数 ==================== */
+        // 数值滚动动画
+        function animateValue(elementId, newValue) {
+            const element = document.getElementById(elementId);
+            const currentValue = parseFloat(element.textContent) || 0;
+            const diff = newValue - currentValue;
+            const duration = 500;
+            const steps = 20;
+            const stepValue = diff / steps;
+            const stepDuration = duration / steps;
+
+            let currentStep = 0;
+
+            const timer = setInterval(() => {
+                currentStep++;
+                const value = currentValue + (stepValue * currentStep);
+                element.textContent = value.toFixed(1);
+
+                if (currentStep >= steps) {
+                    clearInterval(timer);
+                    element.textContent = newValue.toFixed(1);
+                }
+            }, stepDuration);
+        }
+
+        // 更新进度环
+        function updateProgressRing(circleId, percentage) {
+            const circle = document.getElementById(circleId);
+            const circumference = 2 * Math.PI * 40; // r=40
+            const offset = circumference - (percentage / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+        }
+
+        // 打开帮助弹窗
+        function openHelp() {
+            document.getElementById('helpModal').classList.add('active');
+        }
+
+        // 关闭帮助弹窗
+        function closeHelp() {
+            document.getElementById('helpModal').classList.remove('active');
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('helpModal').addEventListener('click', (e) => {
+            if (e.target.id === 'helpModal') {
+                closeHelp();
+            }
+        });
+
+        /* ==================== 应用初始化 ==================== */
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建核心实例
+            const stateManager = new StateManager();
+            const sensorSimulator = new SensorSimulator(stateManager);
+            const particleSystem = new ParticleSystem('humidifierCanvas');
+            const waterAnimation = new WaterAnimation('waterDevice');
+            const uiController = new UIController(stateManager, sensorSimulator, particleSystem, waterAnimation);
+
+            // 启动传感器模拟器（但系统处于暂停状态）
+            sensorSimulator.start();
+
+            // 初始化进度环
+            updateProgressRing('airHumidityCircle', 50);
+            updateProgressRing('soilMoistureCircle', 50);
+
+            console.log('🌱 智能种植可视化工具已启动');
+            console.log('📊 系统版本：v1.0.0');
+            console.log('👨‍💻 开发者：Claude Code');
+        });
+    </script>
+</body>
+</html>
